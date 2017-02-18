@@ -1,11 +1,13 @@
 /*
- * test_utils.h      ...
+ * test_utils.h     Datatypes and declarations for unit testing framework
  *
- * Author:      Carter J. Bastian
- *              February, 2017
+ * Author:          Carter J. Bastian
+ *                  February, 2017
  *
  * Description:
- *
+ *    Contains the definition of a unit test as a token, function pointer, and
+ *    name. Also enumerates the unit tests, and consists of the declarations of
+ *    all unit tests defined in test_utils.c
  */
 #ifndef TEST_UTILS_H_
 #define TEST_UTILS_H_
@@ -13,18 +15,24 @@
 // Datatype Declarations
 typedef struct {
   int token;
-  void *function;
+  int (*function)(void);    // A pointer to a unit test function
   char *name;
 } unit_test;
 
-/* Enum with the tokens for each unit test above */
+/*
+ * Enum with the tokens for each unit test above.
+ * CAUTION: new tokens must be added between ROOT_UNIT_TEST and END_UNIT_TESTS
+ * for indexing purposes. For consistent results, add new unit tests directly
+ * before END_UNIT_TESTS.
+ */
 typedef enum {
-  ROOT_UNIT_TEST, // WARNING: this has to stay the first token defined
+  ROOT_UNIT_TEST,   // WARNING: this has to stay the first token defined
   FATAL_ERROR,
   FATAL_ERROR_MESSAGE_MAX,
   SAFE_MALLOC,
   SAFE_MALLOC_ZEROS,
   SAFE_MALLOC_FAILS,
+  END_UNIT_TESTS,   // WARNING: this must be the last token defined
 } test_token;
 
 // Unit Test declarations

@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Local Includes
+#include "brz_utils.h"
+
 // Constants
 const char *error_prefix = "[!!] Fatal Error: ";
 
