@@ -35,15 +35,19 @@ typedef enum {
   END_UNIT_TESTS,   // WARNING: this must be the last token defined
 } test_token;
 
-// Unit Test declarations
-/* Test for the testing framework */
+/*
+ * Unit Test declarations
+ * All unit tests for the project should be declared here and ordered
+ * by the file which contains their definition.
+ */
+/* Test for the testing framework (test_utils.c) */
 int test_root_unit_test();
 
-/* Tests for fatal_error */
+/* Tests for fatal_error (test_fatal_error.c) */
 int test_fatal_error();
 int test_fatal_error_message_max();
 
-/* Tests for safe_malloc */
+/* Tests for safe_malloc (test_safe_malloc.c) */
 int test_safe_malloc();
 int test_safe_malloc_zeros();
 int test_safe_malloc_fails();

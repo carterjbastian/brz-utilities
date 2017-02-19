@@ -8,9 +8,9 @@
  *    Builds a simple unit testing framework for my utilities.
  *
  *    To add a new test:
- *      - Add the test function declaration
+ *      - Define the unit test as a function in some file in this directory
+ *      - Add the test function declaration in test_utils.h
  *      - Add a reference to the test and its name in global variable test_list
- *      - Create the function definition that is the test
  *
  *    Guidelines:
  *      All files in the test_list should be run and return a 1 on success or a
@@ -25,11 +25,8 @@
 #include <stdio.h>
 
 // Local Includes
-#include "brz_utils.h"
+#include "../brz_utils.h"
 #include "test_utils.h"
-
-// Macros and constants
-#define FATAL_THREAD_ERROR -5
 
 /*
  * The test table is the set of definitions of list of unit tests.
@@ -58,56 +55,12 @@ static unit_test test_table[] = {
 #define UNIT_TEST_NAME(X)       ( test_table[ UNIT_TEST_INDEX((X)) ].name )
 
 
-// Private Function Declarations
-void fail_with_fatal_error();
-
-// Unit Tests
+// Public Functions
 /*
  * test_root_unit_test - tests that the unit test framework is working
  */
 int test_root_unit_test() {
   return 1;
-}
-
-/*
- * test_fatal_error - test fatal_error exits with error code and message
- */
-int test_fatal_error() {
-  return 1;
-}
-
-/*
- * test_fatal_error_message_max - test fatal_error with overflowing message
- */
-int test_fatal_error_message_max() {
-  return 1;
-}
-
-/*
- * test_safe_malloc - test allocation succeeds at allocation in normal case
- */
-int test_safe_malloc() {
-  return 0;
-}
-
-/*
- * test_safe_malloc_zeros - test allocation is auto-zero'd out
- */
-int test_safe_malloc_zeros() {
-  return 1;
-}
-
-/*
- * test_safe_malloc_fails - test allocation fails appropriately
- */
-int test_safe_malloc_fails() {
-  return 0;
-}
-
-
-// Private Function Definitions
-void fail_with_fatal_error() {
-  return;
 }
 
 /*
