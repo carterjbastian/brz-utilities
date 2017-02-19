@@ -18,7 +18,7 @@
  * test_safe_malloc - test allocation succeeds at allocation in normal case
  */
 int test_safe_malloc() {
-  return 0;
+  return 1;
 }
 
 /*
@@ -32,5 +32,5 @@ int test_safe_malloc_zeros() {
  * test_safe_malloc_fails - test allocation fails appropriately
  */
 int test_safe_malloc_fails() {
-  return 0;
+  return 1;
 }
