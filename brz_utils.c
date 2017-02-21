@@ -38,6 +38,7 @@ const char *error_prefix = "[!!] Fatal Error: ";
  */
 void fatal_error(int exit_value, char *message) {
   char error_message[ERROR_MESSAGE_MAX_LENGTH];
+  memset(error_message, 0, ERROR_MESSAGE_MAX_LENGTH);
   int prefix_length = strlen(error_prefix);
 
   // Format and print an error message with perror
