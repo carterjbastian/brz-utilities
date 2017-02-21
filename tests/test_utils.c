@@ -41,7 +41,8 @@
  */
 static unit_test test_table[] = {
   { ROOT_UNIT_TEST, test_root_unit_test, "test_root_unit_test" },
-  { FATAL_ERROR, test_fatal_error, "test_fatal_error" },
+  { FATAL_ERROR_CORRECT_MESSAGE, test_fatal_error_correct_message, "test_fatal_error_correct_message" },
+  { FATAL_ERROR_CODE, test_fatal_error_code, "test_fatal_error_code" },
   { FATAL_ERROR_MESSAGE_MAX, test_fatal_error_message_max, "test_fatal_error_message_max" },
   { SAFE_MALLOC, test_safe_malloc, "test_safe_malloc" },
   { SAFE_MALLOC_ZEROS, test_safe_malloc_zeros, "test_safe_malloc_zeros" },

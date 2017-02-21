@@ -27,7 +27,8 @@ typedef struct {
  */
 typedef enum {
   ROOT_UNIT_TEST,   // WARNING: this has to stay the first token defined
-  FATAL_ERROR,
+  FATAL_ERROR_CORRECT_MESSAGE,
+  FATAL_ERROR_CODE,
   FATAL_ERROR_MESSAGE_MAX,
   SAFE_MALLOC,
   SAFE_MALLOC_ZEROS,
@@ -44,7 +45,8 @@ typedef enum {
 int test_root_unit_test();
 
 /* Tests for fatal_error (test_fatal_error.c) */
-int test_fatal_error();
+int test_fatal_error_correct_message();
+int test_fatal_error_code();
 int test_fatal_error_message_max();
 
 /* Tests for safe_malloc (test_safe_malloc.c) */

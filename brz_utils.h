@@ -17,6 +17,7 @@
 
 // Constant and Macro Definitions
 #define ERROR_MESSAGE_MAX_LENGTH 100
+extern const char *error_prefix;
 
 // Public Function Declarations
 void fatal_error(int exit_value, char *message);

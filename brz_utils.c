@@ -44,7 +44,7 @@ void fatal_error(int exit_value, char *message) {
   // Format and print an error message with perror
   strncpy(error_message, error_prefix, prefix_length);
   strncat(error_message, message, ERROR_MESSAGE_MAX_LENGTH - prefix_length);
-  perror(error_message);
+//  perror(error_message);
 
   exit(exit_value);
 }
