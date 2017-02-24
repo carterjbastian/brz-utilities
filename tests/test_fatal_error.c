@@ -84,14 +84,21 @@ int test_fatal_error_code() {
  */
 int test_fatal_error_message_max() {
   // Create a pipe so that we can collect STDERR from child process
-  int file_descriptors[2];
+  int file_descriptors_out[2];
+  int file_descriptors_err[2];
   char stderr_buff[4096];
+  char stdout_buff[4096];
+  ssize_t count;
   pid_t pid;
 
-  // Open a new pipe for the child process to write to
-  if (pipe(file_descriptors) == -1) {
+  // Open new pipes for the child process to write to
+  if (pipe(file_descriptors_out) == -1) {
     perror("Pipe");
-    return(0);
+    return 0;
+  }
+  if (pipe(file_descriptors_err) == -1) {
+    perror("Pipe");
+    return 0;
   }
 
   // For a new process to fail
@@ -101,34 +108,61 @@ int test_fatal_error_message_max() {
     return 0; // TODO: error message logging while it failed
   } else if (pid == 0) { // CHILD:
     // Duplicate the file descriptor
-    while ((dup2(file_descriptors[1], STDERR_FILENO) == -1) &&
+    while ((dup2(file_descriptors_out[1], STDOUT_FILENO) == -1) &&
         (errno == EINTR)) {}
 
-    // Close the pipe
-    close(file_descriptors[1]);
-    close(file_descriptors[0]);
+    while ((dup2(file_descriptors_err[1], STDERR_FILENO) == -1) &&
+        (errno == EINTR)) {}
+
+    // Close the pipes
+    close(file_descriptors_out[1]);
+    close(file_descriptors_out[0]);
+    close(file_descriptors_err[1]);
+    close(file_descriptors_err[0]);
 
     // Exit fatally
     fatal_error(1, "Testing error\n");
-    return 0;
+
+    return 0; // If you make it here, the fatal failing didn't work
   } else { // PARENT:
+    // While loop to read from STDOUT
     while (1) {
-      ssize_t count = read(file_descriptors[0], stderr_buff, sizeof(stderr_buff));
+      count = read(file_descriptors_out[0], stdout_buff, sizeof(stdout_buff));
       if (count == -1) {
         if (errno == EINTR) {
           continue;
         } else {
-          perror("Read");
+          perror("Read stdout");
           return 0;
         }
       } else if (count == 0) {
         break;
       } else {
-        //printf("Test Output: %s\n", stderr_buff);
+        // STDOUT IS CAPTURED
         break;
       }
     }
-    close(file_descriptors[0]);
+    // While loop to read from standard error
+    while (1) {
+      count = read(file_descriptors_err[0], stderr_buff, sizeof(stderr_buff));
+      if (count == -1) {
+        if (errno == EINTR) {
+          continue;
+        } else {
+          perror("Read stderr");
+          return 0;
+        }
+      } else if (count == 0) {
+        break;
+      } else {
+        // STDERR IS CAPTURED
+        break;
+      }
+    }
+    close(file_descriptors_out[0]);
+    close(file_descriptors_err[0]);
+
+    // Wait for the process to return
     wait(0);
     return 1;
   }
