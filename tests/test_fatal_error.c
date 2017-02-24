@@ -15,6 +15,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <errno.h>
+#include <stdio.h>
+
 // Local Includes
 #include "../brz_utils.h"
 #include "test_utils.h"
@@ -80,5 +83,54 @@ int test_fatal_error_code() {
  * test_fatal_error_message_max - test fatal_error with overflowing message
  */
 int test_fatal_error_message_max() {
+  // Create a pipe so that we can collect STDERR from child process
+  int file_descriptors[2];
+  char stderr_buff[4096];
+  pid_t pid;
+
+  // Open a new pipe for the child process to write to
+  if (pipe(file_descriptors) == -1) {
+    perror("Pipe");
+    return(0);
+  }
+
+  // For a new process to fail
+  pid = fork();
+
+  if (pid < 0) {
+    return 0; // TODO: error message logging while it failed
+  } else if (pid == 0) { // CHILD:
+    // Duplicate the file descriptor
+    while ((dup2(file_descriptors[1], STDERR_FILENO) == -1) &&
+        (errno == EINTR)) {}
+
+    // Close the pipe
+    close(file_descriptors[1]);
+    close(file_descriptors[0]);
+
+    // Exit fatally
+    fatal_error(1, "Testing error\n");
+    return 0;
+  } else { // PARENT:
+    while (1) {
+      ssize_t count = read(file_descriptors[0], stderr_buff, sizeof(stderr_buff));
+      if (count == -1) {
+        if (errno == EINTR) {
+          continue;
+        } else {
+          perror("Read");
+          return 0;
+        }
+      } else if (count == 0) {
+        break;
+      } else {
+        //printf("Test Output: %s\n", stderr_buff);
+        break;
+      }
+    }
+    close(file_descriptors[0]);
+    wait(0);
+    return 1;
+  }
   return 1;
 }
