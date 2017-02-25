@@ -10,13 +10,13 @@
  */
 
 // System Includes
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <stdlib.h>
-
-#include <errno.h>
-#include <stdio.h>
 
 // Local Includes
 #include "../brz_utils.h"
@@ -83,12 +83,16 @@ int test_fatal_error_code() {
  * test_fatal_error_message_max - test fatal_error with overflowing message
  */
 int test_fatal_error_message_max() {
-  // Create a pipe so that we can collect STDERR from child process
-  int file_descriptors_out[2];
+  int file_descriptors_out[2];  // File descriptors for STDOUT pipe
   int file_descriptors_err[2];
+  fd_set stdout_set;  // File descriptor set for select
+  fd_set stderr_set;
+  struct timeval timeout;  // Timeout
+  int ready;  // ready value returned by select
+  int attempts;
   char stderr_buff[4096];
   char stdout_buff[4096];
-  ssize_t count;
+  ssize_t count;  // Number of bytes read by call to read
   pid_t pid;
 
   // Open new pipes for the child process to write to
@@ -100,6 +104,18 @@ int test_fatal_error_message_max() {
     perror("Pipe");
     return 0;
   }
+
+  // Initialize the filedescriptor sets
+  FD_ZERO(&stdout_set);
+  FD_ZERO(&stderr_set);
+
+  FD_SET(file_descriptors_out[0], &stdout_set);
+  FD_SET(file_descriptors_err[0], &stderr_set);
+
+  // Create the time out such that each attempted read will be wait less
+  // than the specified maximum wait time.
+  timeout.tv_sec = 0;
+  timeout.tv_usec = UNITTEST_TIMEOUT_MSECS;
 
   // For a new process to fail
   pid = fork();
@@ -125,40 +141,46 @@ int test_fatal_error_message_max() {
 
     return 0; // If you make it here, the fatal failing didn't work
   } else { // PARENT:
-    // While loop to read from STDOUT
-    while (1) {
-      count = read(file_descriptors_out[0], stdout_buff, sizeof(stdout_buff));
-      if (count == -1) {
+    // For loop to read from STDOUT
+    for (attempts = 0; attempts < PIPE_READ_MAX_ATTEMPTS; attempts++) {
+      ready = select(
+          file_descriptors_out[0] + 1, &stdout_set, NULL, NULL, &timeout);
+      if (ready == -1) {
         if (errno == EINTR) {
           continue;
         } else {
           perror("Read stdout");
           return 0;
         }
-      } else if (count == 0) {
-        break;
+      } else if (ready == 0) {
+        continue;
       } else {
-        // STDOUT IS CAPTURED
+        // Capture standard out and break
+        count = read(file_descriptors_out[0], stdout_buff, sizeof(stdout_buff));
         break;
       }
     }
-    // While loop to read from standard error
-    while (1) {
-      count = read(file_descriptors_err[0], stderr_buff, sizeof(stderr_buff));
-      if (count == -1) {
+    // For loop to read from standard error
+    for (attempts = 0; attempts < PIPE_READ_MAX_ATTEMPTS; attempts++) {
+      ready = select(
+          file_descriptors_err[0] + 1, &stderr_set, NULL, NULL, &timeout);
+      if (ready == -1) {
         if (errno == EINTR) {
           continue;
         } else {
           perror("Read stderr");
           return 0;
         }
-      } else if (count == 0) {
-        break;
+      } else if (ready == 0) {
+        continue;
       } else {
-        // STDERR IS CAPTURED
+        // Capture stderr
+        count = read(file_descriptors_err[0], stderr_buff, sizeof(stderr_buff));
         break;
       }
     }
+
+    // Close the open pipes
     close(file_descriptors_out[0]);
     close(file_descriptors_err[0]);
 

@@ -12,13 +12,15 @@
 #ifndef TEST_UTILS_H_
 #define TEST_UTILS_H_
 
-// Datatype Declarations
+// Datatype and constant declarations
 typedef struct {
   int token;
-  int (*function)(void);    // A pointer to a unit test function
+  int (*function)(void);  // A pointer to a unit test function
   char *name;
 } unit_test;
 
+#define PIPE_READ_MAX_ATTEMPTS 3
+#define UNITTEST_TIMEOUT_MSECS 10000
 /*
  * Enum with the tokens for each unit test above.
  * CAUTION: new tokens must be added between ROOT_UNIT_TEST and END_UNIT_TESTS
