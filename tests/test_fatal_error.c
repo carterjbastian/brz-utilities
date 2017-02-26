@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -101,93 +102,60 @@ int test_fatal_error_code() {
  * test_fatal_error_message_max - test fatal_error with overflowing message
  */
 int test_fatal_error_message_max() {
-  int fdes_out[2];  // File descriptors for STDOUT pipe
-  int fdes_err[2];
-  fd_set fds;  // File descriptor set for select
-  int max_fd;
-  struct timeval timeout;  // Timeout
-  int ready;  // ready value returned by select
-  char stderr_buff[4096];
-  char stdout_buff[4096];
-  ssize_t count;  // Number of bytes read by call to read
-  pid_t pid;
+  uproc_status *retval;
+  struct fatal_error_params *args;
+  const char *error_message = "This is an error message such wow\n";
+  char *intended_error;
+  char *returned_message;
+  int match;
 
-  stderr_buff[0]= '\0';
-  stdout_buff[0] = '\0';
-
-  // Open new pipes for the child process to write to
-  if (pipe(fdes_out) == -1) {
-    perror("Pipe");
+  // Initialize the parameter structure
+  args = malloc(sizeof(fatal_error_params));
+  if (!args) {
+    perror("malloc failed");
     return 0;
   }
-  if (pipe(fdes_err) == -1) {
-    perror("Pipe");
+  args->code = 1;
+  args->msg = error_message;
+
+  // Create the intended error message
+  int message_len = strlen(error_message) + strlen(error_prefix);
+  intended_error = (char *) malloc(message_len + 1);
+  intended_error[message_len] = '\0';
+  strncat(intended_error, error_prefix, strlen(error_prefix));
+  strncat(intended_error, error_message, strlen(error_message));
+
+  // Run the uproc and collect its exit status
+  retval = create_uproc(&fatal_error_uproc, (void *) args);
+
+  // Collect the exit status
+  if (retval) {
+    returned_message = retval->stderr_buff;
+  } else {
+    perror("uproc Failed");
+    free(args);
     return 0;
   }
 
-  // Initialize the filedescriptor sets
-  FD_ZERO(&fds);
+  // Compare the stderr output with what was intended
+  if (strlen(intended_error) != strlen(returned_message))
+    match = -1;
+  else
+    match = strncmp(intended_error, returned_message, strlen(intended_error));
 
-  FD_SET(fdes_out[0], &fds);
-  FD_SET(fdes_err[0], &fds);
+  // Clean up memory from uproc return
+  if (retval->stderr_buff)
+    free(retval->stderr_buff);
+  if (retval->stdout_buff)
+    free(retval->stdout_buff);
+  if (retval)
+    free(retval);
 
-  // Find the largest filedescriptor of the two
-  max_fd = (fdes_out[0] > fdes_err[0]) ? fdes_out[0] : fdes_err[0];
-
-  // Create the time out such that each attempted read will be wait less
-  // than the specified maximum wait time.
-  timeout.tv_sec = 0;
-  timeout.tv_usec = UNITTEST_TIMEOUT_MSECS;
-
-  // For a new process to fail
-  pid = fork();
-
-  if (pid < 0) {
-    return 0; // TODO: error message logging while it failed
-  } else if (pid == 0) { // CHILD:
-    // Duplicate the file descriptor
-    while ((dup2(fdes_out[1], STDOUT_FILENO) == -1) &&
-        (errno == EINTR)) {}
-
-    while ((dup2(fdes_err[1], STDERR_FILENO) == -1) &&
-        (errno == EINTR)) {}
-
-    // Close the pipes
-    close(fdes_out[1]);
-    close(fdes_out[0]);
-    close(fdes_err[1]);
-    close(fdes_err[0]);
-
-    // Exit fatally
-    fatal_error(1, "Testing error\n");
-
-    return 0; // If you make it here, the fatal failing didn't work
-
-  } else { // PARENT:
-    // Wait for the process to return no matter what
-    wait(0);
-
-    // Check if the redirected output pipes are ready to be read
-    ready = select(max_fd + 1, &fds, NULL, NULL, &timeout);
-    if (ready == -1) {
-        perror("Read stdout");
-        return 0;
-    } else if (ready > 0) {
-      // Capture output and break
-      if (FD_ISSET(fdes_out[0], &fds))
-        count = read(fdes_out[0], stdout_buff, sizeof(stdout_buff));
-
-      if (FD_ISSET(fdes_err[0], &fds))
-        count = read(fdes_err[0], stderr_buff, sizeof(stderr_buff));
-    }
-
-    // Close the open pipes
-    close(fdes_out[0]);
-    close(fdes_err[0]);
-
+  // Return test results
+  if (match != 0)
+    return 0;
+  else
     return 1;
-  }
-  return 1;
 }
 
 // Private functions
