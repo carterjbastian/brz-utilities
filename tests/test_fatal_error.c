@@ -25,7 +25,12 @@
 // Global Variables
 
 // Private Function Declarations
-void *fatal_exit_process(void *fatal_exit_data);
+struct fatal_error_params {
+  int code;
+  const char *msg;  // Ensure the string is statically allocated
+} fatal_error_params;
+
+void fatal_error_uproc(void *args);
 
 // Unit Tests
 /*
@@ -47,35 +52,48 @@ int test_fatal_error_correct_message() {
 int test_fatal_error_code() {
   int test_codes[] = {0, 1, 10, 100, 255};
   int test_code_len = 5;
+  int exit_status = -1;
+  uproc_status *retval;
+  struct fatal_error_params *args;
 
-  pid_t pid;
+  // Initialize the parameter structure
+  args = malloc(sizeof(fatal_error_params));
+  if (!args) {
+    perror("malloc failed");
+    return 0;
+  }
+  args->msg = "Failing in test_fatal_error_code\n";
 
   for (int i = 0; i < test_code_len; i++) {
-    pid = 0;
-    int status = 0;
+    // Run the uproc and collect its exit status
+    args->code = test_codes[i];
+    retval = create_uproc(&fatal_error_uproc, (void *) args);
 
-    // Fork a new process to fail
-    pid = fork();
-
-    if (pid < 0) {
-      // Ensure fork succeeded
-      return 0; // TODO: error message logging why it failed
-    } else if (pid == 0) {
-      // CHILD: call fatal_exit with return code
-      char *message = "Failing in test_fatal_error_code";
-      fatal_error(test_codes[i], message);
+    // Collect the exit status
+    if (retval) {
+      exit_status = retval->exit_code;
     } else {
-      // PARENT: wait for child to finish and check exit code
-      status = 0;
-      if (wait(&status) == -1)
-        return 0;
+      perror("uproc Failed");
+      free(args);
+      return 0;
+    }
 
-      // Check that the exit status is correct
-      if (!(WIFEXITED(status) && WEXITSTATUS(status) == test_codes[i]))
-        return 0;
+    // Clean up memory from uproc return
+    if (retval->stderr_buff)
+      free(retval->stderr_buff);
+    if (retval->stdout_buff)
+      free(retval->stdout_buff);
+    if (retval)
+      free(retval);
+
+    // Return if test failed
+    if (exit_status != test_codes[i]) {
+      free(args);
+      return 0;
     }
   }
-  // All error codes returned were correct
+  // All error codes returned were correct. Cleanup and return
+  free(args);
   return 1;
 }
 
@@ -170,4 +188,13 @@ int test_fatal_error_message_max() {
     return 1;
   }
   return 1;
+}
+
+// Private functions
+void fatal_error_uproc(void *args_p) {
+  // Cast the arguments to the param struct
+  struct fatal_error_params *args = (struct fatal_error_params *)args_p;
+
+  // Call fatal_error with the correct params
+  fatal_error(args->code, (char *)args->msg);
 }
