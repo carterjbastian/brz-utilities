@@ -83,34 +83,38 @@ int test_fatal_error_code() {
  * test_fatal_error_message_max - test fatal_error with overflowing message
  */
 int test_fatal_error_message_max() {
-  int file_descriptors_out[2];  // File descriptors for STDOUT pipe
-  int file_descriptors_err[2];
-  fd_set stdout_set;  // File descriptor set for select
-  fd_set stderr_set;
+  int fdes_out[2];  // File descriptors for STDOUT pipe
+  int fdes_err[2];
+  fd_set fds;  // File descriptor set for select
+  int max_fd;
   struct timeval timeout;  // Timeout
   int ready;  // ready value returned by select
-  int attempts;
   char stderr_buff[4096];
   char stdout_buff[4096];
   ssize_t count;  // Number of bytes read by call to read
   pid_t pid;
 
+  stderr_buff[0]= '\0';
+  stdout_buff[0] = '\0';
+
   // Open new pipes for the child process to write to
-  if (pipe(file_descriptors_out) == -1) {
+  if (pipe(fdes_out) == -1) {
     perror("Pipe");
     return 0;
   }
-  if (pipe(file_descriptors_err) == -1) {
+  if (pipe(fdes_err) == -1) {
     perror("Pipe");
     return 0;
   }
 
   // Initialize the filedescriptor sets
-  FD_ZERO(&stdout_set);
-  FD_ZERO(&stderr_set);
+  FD_ZERO(&fds);
 
-  FD_SET(file_descriptors_out[0], &stdout_set);
-  FD_SET(file_descriptors_err[0], &stderr_set);
+  FD_SET(fdes_out[0], &fds);
+  FD_SET(fdes_err[0], &fds);
+
+  // Find the largest filedescriptor of the two
+  max_fd = (fdes_out[0] > fdes_err[0]) ? fdes_out[0] : fdes_err[0];
 
   // Create the time out such that each attempted read will be wait less
   // than the specified maximum wait time.
@@ -124,68 +128,45 @@ int test_fatal_error_message_max() {
     return 0; // TODO: error message logging while it failed
   } else if (pid == 0) { // CHILD:
     // Duplicate the file descriptor
-    while ((dup2(file_descriptors_out[1], STDOUT_FILENO) == -1) &&
+    while ((dup2(fdes_out[1], STDOUT_FILENO) == -1) &&
         (errno == EINTR)) {}
 
-    while ((dup2(file_descriptors_err[1], STDERR_FILENO) == -1) &&
+    while ((dup2(fdes_err[1], STDERR_FILENO) == -1) &&
         (errno == EINTR)) {}
 
     // Close the pipes
-    close(file_descriptors_out[1]);
-    close(file_descriptors_out[0]);
-    close(file_descriptors_err[1]);
-    close(file_descriptors_err[0]);
+    close(fdes_out[1]);
+    close(fdes_out[0]);
+    close(fdes_err[1]);
+    close(fdes_err[0]);
 
     // Exit fatally
     fatal_error(1, "Testing error\n");
 
     return 0; // If you make it here, the fatal failing didn't work
+
   } else { // PARENT:
-    // For loop to read from STDOUT
-    for (attempts = 0; attempts < PIPE_READ_MAX_ATTEMPTS; attempts++) {
-      ready = select(
-          file_descriptors_out[0] + 1, &stdout_set, NULL, NULL, &timeout);
-      if (ready == -1) {
-        if (errno == EINTR) {
-          continue;
-        } else {
-          perror("Read stdout");
-          return 0;
-        }
-      } else if (ready == 0) {
-        continue;
-      } else {
-        // Capture standard out and break
-        count = read(file_descriptors_out[0], stdout_buff, sizeof(stdout_buff));
-        break;
-      }
-    }
-    // For loop to read from standard error
-    for (attempts = 0; attempts < PIPE_READ_MAX_ATTEMPTS; attempts++) {
-      ready = select(
-          file_descriptors_err[0] + 1, &stderr_set, NULL, NULL, &timeout);
-      if (ready == -1) {
-        if (errno == EINTR) {
-          continue;
-        } else {
-          perror("Read stderr");
-          return 0;
-        }
-      } else if (ready == 0) {
-        continue;
-      } else {
-        // Capture stderr
-        count = read(file_descriptors_err[0], stderr_buff, sizeof(stderr_buff));
-        break;
-      }
+    // Wait for the process to return no matter what
+    wait(0);
+
+    // Check if the redirected output pipes are ready to be read
+    ready = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+    if (ready == -1) {
+        perror("Read stdout");
+        return 0;
+    } else if (ready > 0) {
+      // Capture output and break
+      if (FD_ISSET(fdes_out[0], &fds))
+        count = read(fdes_out[0], stdout_buff, sizeof(stdout_buff));
+
+      if (FD_ISSET(fdes_err[0], &fds))
+        count = read(fdes_err[0], stderr_buff, sizeof(stderr_buff));
     }
 
     // Close the open pipes
-    close(file_descriptors_out[0]);
-    close(file_descriptors_err[0]);
+    close(fdes_out[0]);
+    close(fdes_err[0]);
 
-    // Wait for the process to return
-    wait(0);
     return 1;
   }
   return 1;
