@@ -19,8 +19,9 @@ typedef struct {
   char *name;
 } unit_test;
 
-#define PIPE_READ_MAX_ATTEMPTS 3
-#define UNITTEST_TIMEOUT_MSECS 10000
+#define PIPE_READ_MAX_ATTEMPTS  3
+#define UNITTEST_TIMEOUT_MSECS  10000
+#define UPROC_OUTPUT_MAX_LEN    4096
 /*
  * Enum with the tokens for each unit test above.
  * CAUTION: new tokens must be added between ROOT_UNIT_TEST and END_UNIT_TESTS
@@ -37,6 +38,27 @@ typedef enum {
   SAFE_MALLOC_FAILS,
   END_UNIT_TESTS,   // WARNING: this must be the last token defined
 } test_token;
+
+/*
+ * A structure returned by a unittest process (uproc).
+ */
+typedef struct uproc_status {
+  int exit_code;
+  char *stderr_buff;
+  char *stdout_buff;
+} uproc_status;
+
+/* Unit Testing utility functions */
+/*
+ * Function to run utest_func as its own process and capture its output.
+ * Returns a struct containing the exit code, stderr, and stdout output
+ * of the process.
+ *
+ * Any function to be run as a uproc should be declared to accept an arbitrary
+ * pointer as an argument (presumably to a function-specific struct) containing
+ * arguments, and should exit with some status rather than return.
+ */
+uproc_status *create_uproc( void (*utest_func)(void *), void *args);
 
 /*
  * Unit Test declarations

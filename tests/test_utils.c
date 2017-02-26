@@ -22,7 +22,14 @@
  *      test_<FUNCTION>_<FEATURE>.
  */
 // System Includes
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/select.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // Local Includes
 #include "../brz_utils.h"
@@ -57,6 +64,156 @@ static unit_test test_table[] = {
 
 
 // Public Functions
+
+/*
+ * create_uproc - run a function as a process and return its output
+ *
+ * Args:
+ *    utest_func - a function to be run in its own process. Similar in usage
+ *      to a pthread, a uproc function should accept a generic pointer (void *)
+ *      and should return nothing. Rather, this function should exit with a
+ *      status code.
+ *
+ *    args - a pointer to some utest_func specific data structure which, when
+ *      deconstructed, has the parameters to pass into utest_func.
+ *
+ * Return Values:
+ *    Under normal circumstances, returns a pointer to a dynamically allocated
+ *    struct containing the exit code, stdout output, and stderr output of the
+ *    process. In the event of an internal error, returns NULL and prints with
+ *    perror.
+ *
+ * Caution:
+ *    It is the responsibility of the caller to free the dynamically allocated
+ *    uproc_status pointer, as well as its dynamically allocated members
+ *    (stderr_buff and stdout_buff).
+ *
+ * TODO: write a cleanup function for uprocs.
+ * TODO: figure out non-standard return values from create_uproc
+ */
+uproc_status *create_uproc( void (*utest_func)(void *), void *args) {
+  int fdes_out[2];  // File descriptors for STDOUT pipe
+  int fdes_err[2];  // File descriptors for STDERR pipe
+  fd_set fds;       // File descriptor set for select
+  int max_fd;       // Maximum file descriptor for select
+  struct timeval timeout;   // Timeout for select
+  int pipes_ready;          // Pipe readability indicator returned by select
+  char stderr_buff[UPROC_OUTPUT_MAX_LEN + 1];  // Buffer for output from stderr
+  char stdout_buff[UPROC_OUTPUT_MAX_LEN + 1];  // Buffer for output from stdout
+  ssize_t stdout_len = 0;       // Number of bytes read from uproc's stdout
+  ssize_t stderr_len = 0;       // Number of bytes read from uproc's stderr
+  pid_t pid;        // Process ID to track the
+  int status;       // Status of the child process returned by wait
+  int uproc_exit_code;      // The exit code of the child process
+  uproc_status *retval;     // struct with uproc output to be returned
+
+  // Zero out the buffers
+  memset(stderr_buff, 0, UPROC_OUTPUT_MAX_LEN + 1);
+  memset(stdout_buff, 0, UPROC_OUTPUT_MAX_LEN + 1);
+
+  // Open new pipes for the child process to write to
+  if (pipe(fdes_out) == -1) {
+    perror("Pipe");
+    return NULL;
+  }
+  if (pipe(fdes_err) == -1) {
+    perror("Pipe");
+    return NULL;
+  }
+
+  // Initialize the filedescriptor sets
+  FD_ZERO(&fds);
+  FD_SET(fdes_out[0], &fds);
+  FD_SET(fdes_err[0], &fds);
+
+  // Find the largest filedescriptor of the two
+  max_fd = (fdes_out[0] > fdes_err[0]) ? fdes_out[0] : fdes_err[0];
+
+  // Create a timeout with a somewhat arbitrary amount of wait time
+  timeout.tv_sec = 0;
+  timeout.tv_usec = UNITTEST_TIMEOUT_MSECS;
+
+  // For a new process to fail
+  pid = fork();
+
+  if (pid < 0) {
+    // Check for piping error
+    perror("Bad Pipe");
+    return NULL;
+  } else if (pid == 0) {
+    // CHILD process: Setup the output pipes and run utest_func
+    // Duplicate file descriptors for stdout and stderr
+    while ((dup2(fdes_out[1], STDOUT_FILENO) == -1) &&
+        (errno == EINTR)) {}
+    while ((dup2(fdes_err[1], STDERR_FILENO) == -1) &&
+        (errno == EINTR)) {}
+
+    // Close pipes in advanced
+    close(fdes_out[1]);
+    close(fdes_out[0]);
+    close(fdes_err[1]);
+    close(fdes_err[0]);
+
+    // Run the unittest (which should exit on its own)
+    (*utest_func)(args);
+
+  } else { // PARENT:
+    // Wait for the process to return
+    // TODO: Use alarm system call to timeout with varying lengths
+    status = 0;
+    if (wait(&status) == -1) {
+      perror("wait system call failed");
+      return NULL;
+    }
+
+    // Check that the process exited and collect its exit code
+    if (!(WIFEXITED(status))) {
+      perror("uproc did not exit normally");
+      return NULL;
+    }
+    uproc_exit_code = WEXITSTATUS(status);
+
+    // Check if the redirected output pipes are ready to be read
+    pipes_ready = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+    if (pipes_ready == -1) {
+        perror("Read stdout");
+        return NULL;
+    } else if (pipes_ready > 0) {
+      // Capture output and break
+      if (FD_ISSET(fdes_out[0], &fds))
+        stdout_len = read(fdes_out[0], stdout_buff, sizeof(stdout_buff));
+
+      if (FD_ISSET(fdes_err[0], &fds))
+        stderr_len = read(fdes_err[0], stderr_buff, sizeof(stderr_buff));
+    }
+
+    // Close the open pipes
+    close(fdes_out[0]);
+    close(fdes_err[0]);
+
+    // Create the structure to return
+    retval = (uproc_status *) malloc(sizeof(uproc_status));
+    retval->exit_code = uproc_exit_code;
+    retval->stdout_buff = NULL;   // String pointers default to null pointer
+    retval->stderr_buff = NULL;
+
+    if (stdout_len > 0) {
+      retval->stdout_buff = (char *) malloc(sizeof(char) * (stdout_len + 1));
+      strncpy(retval->stdout_buff, stdout_buff, stdout_len);
+      retval->stdout_buff[stdout_len] = '\0';  // Force null termination
+    }
+    if (stderr_len > 0) {
+      retval->stderr_buff = (char *) malloc(sizeof(char) * (stderr_len + 1));
+      strncpy(retval->stderr_buff, stderr_buff, stderr_len);
+      retval->stderr_buff[stderr_len] = '\0';  // Force null termination
+    }
+
+    // Return the structure with information about the child process
+    return retval;
+  }
+  perror("Unexpected lack of return value in uproc_create");
+  return NULL;
+}
 /*
  * test_root_unit_test - tests that the unit test framework is working
  */
