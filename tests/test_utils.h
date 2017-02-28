@@ -58,7 +58,7 @@ typedef struct uproc_status {
  * pointer as an argument (presumably to a function-specific struct) containing
  * arguments, and should exit with some status rather than return.
  */
-uproc_status *create_uproc( void (*utest_func)(void *), void *args);
+uproc_status *create_uproc(int token, void (*utest_func)(void *), void *args);
 
 /*
  * Unit Test declarations

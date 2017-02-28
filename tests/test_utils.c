@@ -69,6 +69,10 @@ static unit_test test_table[] = {
  * create_uproc - run a function as a process and return its output
  *
  * Args:
+ *    token - the test token for the current unit test. AKA the symbolic value
+ *      for the current test in its unit_test struct in the test table
+ *      EG. ROOT_UNIT_TEST
+ *
  *    utest_func - a function to be run in its own process. Similar in usage
  *      to a pthread, a uproc function should accept a generic pointer (void *)
  *      and should return nothing. Rather, this function should exit with a
@@ -91,7 +95,7 @@ static unit_test test_table[] = {
  * TODO: write a cleanup function for uprocs.
  * TODO: figure out non-standard return values from create_uproc
  */
-uproc_status *create_uproc( void (*utest_func)(void *), void *args) {
+uproc_status *create_uproc(int token, void (*utest_func)(void *), void *args) {
   int fdes_out[2];  // File descriptors for STDOUT pipe
   int fdes_err[2];  // File descriptors for STDERR pipe
   fd_set fds;       // File descriptor set for select
@@ -106,6 +110,7 @@ uproc_status *create_uproc( void (*utest_func)(void *), void *args) {
   int status;       // Status of the child process returned by wait
   int uproc_exit_code;      // The exit code of the child process
   uproc_status *retval;     // struct with uproc output to be returned
+  int stdout_junk_len;      // Length of the junk printed to stdout by main
 
   // Zero out the buffers
   memset(stderr_buff, 0, UPROC_OUTPUT_MAX_LEN + 1);
@@ -187,6 +192,7 @@ uproc_status *create_uproc( void (*utest_func)(void *), void *args) {
         stderr_len = read(fdes_err[0], stderr_buff, sizeof(stderr_buff));
     }
 
+
     // Close the open pipes
     close(fdes_out[0]);
     close(fdes_err[0]);
@@ -198,8 +204,14 @@ uproc_status *create_uproc( void (*utest_func)(void *), void *args) {
     retval->stderr_buff = NULL;
 
     if (stdout_len > 0) {
+      // Because STDOUT is forked from the main method of test_utils.c, it
+      // always prints the string "  running test <test name>..."
+      // Flush these characters from the buffer.
+      stdout_junk_len = 18 + strlen(UNIT_TEST_NAME(token));
+      stdout_len -= stdout_junk_len;
+
       retval->stdout_buff = (char *) malloc(sizeof(char) * (stdout_len + 1));
-      strncpy(retval->stdout_buff, stdout_buff, stdout_len);
+      strncpy(retval->stdout_buff, stdout_buff + stdout_junk_len , stdout_len);
       retval->stdout_buff[stdout_len] = '\0';  // Force null termination
     }
     if (stderr_len > 0) {
@@ -246,6 +258,8 @@ int main(int argc, char **argv) {
   // Do a second pass, running the unit tests and recording their results
   for (token = ROOT_UNIT_TEST; token < END_UNIT_TESTS; token++) {
     run_test = UNIT_TEST_FUNCTION(token);
+    // WARNING: if you change this print statement, you must also change
+    // the segment of code that copies the stdout pipe to a string in uproc.
     printf("  Running test %s...", UNIT_TEST_NAME(token));
 
     test_passed = run_test();
