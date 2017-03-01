@@ -43,7 +43,9 @@ void fatal_error(int exit_value, char *message) {
 
   // Format and print an error message with perror
   strncpy(error_message, error_prefix, prefix_length);
-  strncat(error_message, message, ERROR_MESSAGE_MAX_LENGTH - prefix_length);
+  strncat(error_message, message,
+          ERROR_MESSAGE_MAX_LENGTH - (prefix_length + 1));
+
   // TODO: Check ERRNO and get the actual OS error if necessary
   fprintf(stderr, "%s", error_message);
   exit(exit_value);

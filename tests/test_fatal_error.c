@@ -161,7 +161,70 @@ int test_fatal_error_code() {
  * test_fatal_error_message_max - test fatal_error with overflowing message
  */
 int test_fatal_error_message_max() {
-  return 1;
+  uproc_status *retval;
+  struct fatal_error_params *args;
+  char *long_error_message;
+  int long_message_length;
+  char *returned_message;
+  int success = 0;
+
+  // Create the long error message to be more than the max length
+  long_message_length = ERROR_MESSAGE_MAX_LENGTH * 2;
+  long_error_message = (char *) malloc(long_message_length + 1);
+  long_error_message[long_message_length] = '\0'; // Null termination
+  memset((void *)long_error_message, 'A', long_message_length);
+
+  // Initialize the parameter structure
+  args = malloc(sizeof(fatal_error_params));
+  if (!args) {
+    perror("malloc failed");
+    return 0;
+  }
+  args->code = 1;
+  args->msg = long_error_message;
+
+  // Run the uproc and collect its exit status
+  retval = create_uproc(FATAL_ERROR_CORRECT_MESSAGE,
+                        &fatal_error_uproc, (void *) args);
+
+  // Collect the exit status
+  if (retval) {
+    returned_message = retval->stderr_buff;
+  } else {
+    perror("uproc Failed");
+    free(args);
+    return 0;
+  }
+
+  // Check that the length of the error message is not more than the max length
+  if (returned_message) {
+    if (strlen(returned_message) != ERROR_MESSAGE_MAX_LENGTH) {
+      printf("\nReturned error message length: %d\n", strlen(returned_message));
+      success = -1;
+    }
+  } else {
+    printf("No returned error message.\n");
+    success = -1;
+  }
+
+  // Check that there is no stdout output
+  // TODO: print error message explaining this error
+  if (strlen(retval->stdout_buff) != 0)
+    success = -1;
+
+  // Clean up memory from uproc return
+  if (retval->stderr_buff)
+    free(retval->stderr_buff);
+  if (retval->stdout_buff)
+    free(retval->stdout_buff);
+  if (retval)
+    free(retval);
+
+  // Return test results
+  if (success != 0)
+    return 0;
+  else
+    return 1;
 }
 
 // Private functions

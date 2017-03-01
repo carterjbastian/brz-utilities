@@ -16,7 +16,7 @@
 #define BRZ_UTILS_H_
 
 // Constant and Macro Definitions
-#define ERROR_MESSAGE_MAX_LENGTH 100
+#define ERROR_MESSAGE_MAX_LENGTH 1024
 extern const char *error_prefix;
 
 // Public Function Declarations
