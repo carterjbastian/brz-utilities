@@ -203,7 +203,7 @@ uproc_status *create_uproc(int token, void (*utest_func)(void *), void *args) {
     retval->stdout_buff = NULL;   // String pointers default to null pointer
     retval->stderr_buff = NULL;
 
-    if (stdout_len > 0) {
+    if (stdout_len > (18 + strlen(UNIT_TEST_NAME(token)))) {
       // Because STDOUT is forked from the main method of test_utils.c, it
       // always prints the string "  running test <test name>..."
       // Flush these characters from the buffer.

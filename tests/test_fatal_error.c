@@ -10,20 +10,13 @@
  */
 
 // System Includes
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 // Local Includes
 #include "../brz_utils.h"
 #include "test_utils.h"
-
-// Global Variables
 
 // Private Function Declarations
 struct fatal_error_params {
@@ -85,7 +78,7 @@ int test_fatal_error_correct_message() {
 
   // Check that there is no stdout output
   // TODO: print error message explaining this error
-  if (strlen(retval->stdout_buff) != 0)
+  if (retval->stdout_buff)
     match = -1;
 
   // Clean up memory from uproc return
@@ -171,8 +164,8 @@ int test_fatal_error_message_max() {
   // Create the long error message to be more than the max length
   long_message_length = ERROR_MESSAGE_MAX_LENGTH * 2;
   long_error_message = (char *) malloc(long_message_length + 1);
-  long_error_message[long_message_length] = '\0'; // Null termination
   memset((void *)long_error_message, 'A', long_message_length);
+  long_error_message[long_message_length] = '\0'; // Null termination
 
   // Initialize the parameter structure
   args = malloc(sizeof(fatal_error_params));
@@ -198,18 +191,16 @@ int test_fatal_error_message_max() {
 
   // Check that the length of the error message is not more than the max length
   if (returned_message) {
-    if (strlen(returned_message) != ERROR_MESSAGE_MAX_LENGTH) {
-      printf("\nReturned error message length: %d\n", strlen(returned_message));
+    if (strlen(returned_message) != (ERROR_MESSAGE_MAX_LENGTH - 1)) {
       success = -1;
     }
   } else {
-    printf("No returned error message.\n");
     success = -1;
   }
 
   // Check that there is no stdout output
   // TODO: print error message explaining this error
-  if (strlen(retval->stdout_buff) != 0)
+  if (retval->stdout_buff)
     success = -1;
 
   // Clean up memory from uproc return
