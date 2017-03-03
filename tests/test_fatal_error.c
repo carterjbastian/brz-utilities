@@ -177,7 +177,7 @@ int test_fatal_error_message_max() {
   args->msg = long_error_message;
 
   // Run the uproc and collect its exit status
-  retval = create_uproc(FATAL_ERROR_CORRECT_MESSAGE,
+  retval = create_uproc(FATAL_ERROR_MESSAGE_MAX,
                         &fatal_error_uproc, (void *) args);
 
   // Collect the exit status

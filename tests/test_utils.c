@@ -53,7 +53,6 @@ static unit_test test_table[] = {
   { FATAL_ERROR_MESSAGE_MAX, test_fatal_error_message_max, "test_fatal_error_message_max" },
   { SAFE_MALLOC, test_safe_malloc, "test_safe_malloc" },
   { SAFE_MALLOC_ZEROS, test_safe_malloc_zeros, "test_safe_malloc_zeros" },
-  { SAFE_MALLOC_FAILS, test_safe_malloc_fails, "test_safe_malloc_fails" },
   { END_UNIT_TESTS, NULL, NULL },
 };
 

@@ -35,7 +35,6 @@ typedef enum {
   FATAL_ERROR_MESSAGE_MAX,
   SAFE_MALLOC,
   SAFE_MALLOC_ZEROS,
-  SAFE_MALLOC_FAILS,
   END_UNIT_TESTS,   // WARNING: this must be the last token defined
 } test_token;
 
@@ -76,6 +75,5 @@ int test_fatal_error_message_max();
 /* Tests for safe_malloc (test_safe_malloc.c) */
 int test_safe_malloc();
 int test_safe_malloc_zeros();
-int test_safe_malloc_fails();
 
 #endif // TEST_UTILS_H_

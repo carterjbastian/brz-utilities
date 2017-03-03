@@ -57,7 +57,7 @@ void *safe_malloc(unsigned int size) {
   // Check for memory allocation success
   ptr = malloc(size);
   if (ptr == NULL)
-    fatal_error(-1, "Memory allocation failed");
+    fatal_error(1, "Memory allocation failed");
 
   // Zero out freshly allocated memory
   memset(ptr, 0, (size_t) size);
