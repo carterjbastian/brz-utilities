@@ -39,7 +39,7 @@ int test_safe_malloc_zeros() {
 
 
   for (int i = 0; i < size; i++) {
-    if ((*((char *)segment + i)) != '\0')
+    if (*((char *)segment + i) != '\0')
       return 0;
   }
   return 1;
