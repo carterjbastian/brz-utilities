@@ -24,5 +24,7 @@ void fatal_error(int exit_value, char *message);
 
 void *safe_malloc(unsigned int size);
 
+void *safe_calloc(unsigned int count, unsigned int size);
+
 #endif // BRZ_UTILS_H_
 

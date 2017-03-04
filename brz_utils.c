@@ -51,6 +51,12 @@ void fatal_error(int exit_value, char *message) {
   exit(exit_value);
 }
 
+/*
+ * safe_malloc - allocate a zero'd out memory segment, exiting on failure
+ *
+ * Args:
+ *  unsigned int size - the number of bytes to allocate
+ */
 void *safe_malloc(unsigned int size) {
   void *ptr;
 
@@ -61,6 +67,24 @@ void *safe_malloc(unsigned int size) {
 
   // Zero out freshly allocated memory
   memset(ptr, 0, (size_t) size);
+
+  return ptr;
+}
+
+/*
+ * safe_calloc - allocate some number of sequential memory segments in the heap
+ *
+ * Args:
+ *  unsigned int count - the number of sequential segments to allocate
+ *  unsigned int size - the number of bytes to allocate per segment
+ */
+void *safe_calloc(unsigned int count, unsigned int size) {
+  void *ptr;
+
+  // Check for memory allocation success
+  ptr = calloc(count, size);
+  if (ptr == NULL)
+    fatal_error(1, "Memory allocation failed");
 
   return ptr;
 }
