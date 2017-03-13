@@ -26,5 +26,6 @@ void *safe_malloc(unsigned int size);
 
 void *safe_calloc(unsigned int count, unsigned int size);
 
+void fbindump(int fd, unsigned char *data, unsigned int length);
 #endif // BRZ_UTILS_H_
 

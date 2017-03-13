@@ -9,6 +9,7 @@
  *    Includes:
  *      - Error handling
  *      - Error-checking wrappers for memory allocation
+ *      - Pretty-printing functions for binary
  *
  * Attributions:
  *    Some of these functions are adapted (or directly reused) versions of
@@ -88,3 +89,46 @@ void *safe_calloc(unsigned int count, unsigned int size) {
 
   return ptr;
 }
+
+/*
+ * fbindump - print representation of binary to a file
+ *
+ * Args:
+ *  int fd  - File descriptor of file to which to dump
+ *  unsigned char *data - binary data to be printed
+ *  unsigned int length - Number of bytes to print
+ */
+void fbindump(int fd, unsigned char *data, unsigned int length) {
+  unsigned char byte;
+  unsigned int i, j;
+
+  // Get a file object from the filedescriptor
+  FILE *fp = fdopen(fd, "w");
+
+  // Loop through each byte in the data
+  for (i = 0; i < length; i++) {
+    byte = data[i];
+    fprintf(fp, "%02x ", data[i]);  // Print hex byte
+
+    // Modulus math to get the hex printing right
+    if (((i % 16) == 15) || (i == length - 1)) {
+      for (j = 0; j < 15 - (i % 16); j++)
+        fprintf(fp, "   ");
+      fprintf(fp, "| ");
+
+      // Print the character representation of each byte on the line
+      for (j = (i - (i % 16)); j <= i; j++) {
+        byte = data[j];
+        if ((byte > 31) && (byte < 127))
+          fprintf(fp, "%c", byte);
+        else
+          fprintf(fp, ".");
+      }
+
+      fprintf(fp, "\n"); // End of the dump line (each of which is 16 bytes)
+    }
+  }
+}
+
+
+
