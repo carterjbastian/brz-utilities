@@ -54,6 +54,7 @@ static unit_test test_table[] = {
   { SAFE_MALLOC, test_safe_malloc, "test_safe_malloc" },
   { SAFE_MALLOC_ZEROS, test_safe_malloc_zeros, "test_safe_malloc_zeros" },
   { SAFE_CALLOC, test_safe_calloc, "test_safe_calloc" },
+  { FBINDUMP, test_fbindump, "test_fbindump" },
   { END_UNIT_TESTS, NULL, NULL },
 };
 

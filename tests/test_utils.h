@@ -36,6 +36,7 @@ typedef enum {
   SAFE_MALLOC,
   SAFE_MALLOC_ZEROS,
   SAFE_CALLOC,
+  FBINDUMP,
   END_UNIT_TESTS,   // WARNING: this must be the last token defined
 } test_token;
 
@@ -79,5 +80,8 @@ int test_safe_malloc_zeros();
 
 /* Tests for safe_calloc (test_safe_calloc.c) */
 int test_safe_calloc();
+
+/* Tests for fbindump (test_fbindump.c) */
+int test_fbindump();
 
 #endif // TEST_UTILS_H_
